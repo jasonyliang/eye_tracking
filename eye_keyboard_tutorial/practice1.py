@@ -76,20 +76,21 @@ while True:
 		min_y = np.min(left_eye_region[:, 1])
 		max_y = np.max(left_eye_region[:, 1])
 
-		eye = frame[min_y:max_y, min_x:max_x]
-		gray_eye = cv2.cvtColor(eye, cv2.COLOR_BGR2GRAY)
-		_, threshold_eye = cv2.threshold(gray_eye, 70, 255, cv2.THRESH_BINARY)
+		grey_left_eye = left_eye[min_y:max_y, min_x:max_x]
+		#gray_eye = cv2.cvtColor(eye, cv2.COLOR_BGR2GRAY)
+		_, threshold_left_eye = cv2.threshold(grey_left_eye, 70, 255, cv2.THRESH_BINARY)
 
 
-		eye = cv2.resize(eye, None, fx=5, fy=5)
-		threshold_eye = cv2.resize(threshold_eye, None, fx=5, fy=5)
+		grey_left_eye = cv2.resize(grey_left_eye, None, fx=5, fy=5)
+		threshold_left_eye = cv2.resize(threshold_left_eye, None, fx=5, fy=5)
 
 
 
-		cv2.imshow("Eye", eye)
-		cv2.imshow("Threshold", threshold_eye)
+		cv2.imshow("Eye", grey_left_eye)
+		cv2.imshow("Threshold", threshold_left_eye)
 		#cv2.imshow("Mask", mask)
 		cv2.imshow("Left Eye", left_eye)
+		#cv2.imshow("Grey Left Eye", grey_left_eye)
 
 	cv2.imshow("Frame", frame)
 
