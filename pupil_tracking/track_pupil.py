@@ -2,6 +2,7 @@ import cv2
 import dlib
 import numpy as np
 import time 
+from sklearn.svm import SVR
 
 def shape_to_np(shape, dtype="int"):
 	# initialize the list of (x, y)-coordinates
@@ -34,27 +35,6 @@ def contouring(thresh, mid, img, right=False):
 		#pass
 		return None, None
 
-detector = dlib.get_frontal_face_detector()
-predictor = dlib.shape_predictor('../shape_68.dat')
-
-left = [36, 37, 38, 39, 40, 41]
-right = [42, 43, 44, 45, 46, 47]
-
-cap = cv2.VideoCapture(0)
-ret, img = cap.read()
-thresh = img.copy()
-font = cv2.FONT_HERSHEY_PLAIN 
-
-cv2.namedWindow("calibration", cv2.WND_PROP_FULLSCREEN)
-cv2.setWindowProperty("calibration",cv2.WND_PROP_FULLSCREEN,cv2.WINDOW_FULLSCREEN)
-
-cv2.namedWindow('image')
-kernel = np.ones((9, 9), np.uint8)
-
-def nothing(x):
-	pass
-cv2.createTrackbar('threshold', 'image', 0, 255, nothing)
-
 def average_positions(pupil_positions):
 	# get rid of the first 10% 
 	start = int(len(pupil_positions) * 0.1)
@@ -71,12 +51,38 @@ def average_positions(pupil_positions):
 	return np.mean(LX), np.mean(LY), np.mean(RX), np.mean(RY)
 
 
+
+detector = dlib.get_frontal_face_detector()
+predictor = dlib.shape_predictor('../shape_68.dat')
+
+left = [36, 37, 38, 39, 40, 41]
+right = [42, 43, 44, 45, 46, 47]
+
+
+
+
+cap = cv2.VideoCapture(0)
+ret, img = cap.read()
+thresh = img.copy()
+font = cv2.FONT_HERSHEY_PLAIN 
+
+cv2.namedWindow("calibration", cv2.WND_PROP_FULLSCREEN)
+cv2.setWindowProperty("calibration",cv2.WND_PROP_FULLSCREEN,cv2.WINDOW_FULLSCREEN)
+
+cv2.namedWindow('image')
+kernel = np.ones((9, 9), np.uint8)
+
+def nothing(x):
+	pass
+#cv2.createTrackbar('threshold', 'image', 0, 255, nothing)
+
+
 # set calibration
 # need calibration function F to map positions of pupils p to positions on the screen s
 # s_x, s_y = F(p_x, p_y)
 # using SVR: we train two seaprate SVRs
 p = []
-s = [(10, 10), (1200, 10), (10, 600), (1200, 600)]
+s = [(10, 10), (1250, 10), (10, 700), (1250, 700)]
 for screen_points in s:
 	pupil_positions = []
 	while True:
@@ -85,7 +91,7 @@ for screen_points in s:
 		rects = detector(gray, 1)
 		cv2.circle(img, screen_points, 16, (0, 0, 255), 2)
 		cv2.putText(img, f"Look at the Red Circles in the corner, move on to the next circle by pressing the key 'q'", 
-			(500, 100), font, 1, (255,0,0))
+			(200, 50), font, 1, (255,0,0))
 		for rect in rects:
 
 			shape = predictor(gray, rect)
@@ -120,41 +126,59 @@ for screen_points in s:
 	print(f"Screen Position {screen_points}")
 
 	print(f"Pupil Position {average_positions(pupil_positions)}")
+	p.append(average_positions(pupil_positions))
+# train SVM
+# direction x
+y = np.asarray(s)[:, 0]
+x = np.asarray(p)
+regressor_x = SVR(kernel = 'rbf')
+regressor_x.fit(x, y)
+# direction y
+y = np.asarray(s)[:, 1]
+x = np.asarray(p)
+regressor_y = SVR(kernel = 'rbf')
+regressor_y.fit(x, y)
 
-# while(True):
-# 	ret, img = cap.read()
-# 	gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-# 	rects = detector(gray, 1)
-# 	for rect in rects:
 
-# 		shape = predictor(gray, rect)
-# 		shape = shape_to_np(shape)
-# 		mask = np.zeros(img.shape[:2], dtype=np.uint8)
-# 		mask = eye_on_mask(mask, left)
-# 		mask = eye_on_mask(mask, right)
-# 		mask = cv2.dilate(mask, kernel, 5)
-# 		eyes = cv2.bitwise_and(img, img, mask=mask)
-# 		mask = (eyes == [0, 0, 0]).all(axis=2)
-# 		eyes[mask] = [255, 255, 255]
-# 		mid = (shape[42][0] + shape[39][0]) // 2
-# 		eyes_gray = cv2.cvtColor(eyes, cv2.COLOR_BGR2GRAY)
-# 		threshold = 77 #cv2.getTrackbarPos('threshold', 'image')
-# 		_, thresh = cv2.threshold(eyes_gray, threshold, 255, cv2.THRESH_BINARY)
-# 		thresh = cv2.erode(thresh, None, iterations=2) #1
-# 		thresh = cv2.dilate(thresh, None, iterations=4) #2
-# 		thresh = cv2.medianBlur(thresh, 3) #3
-# 		thresh = cv2.bitwise_not(thresh)
-# 		left_cx, left_cy = contouring(thresh[:, 0:mid], mid, img) # left eye
-# 		right_cx, right_cy = contouring(thresh[:, mid:], mid, img, True) # right eye
-# 		print(f"Left eye at {left_cx, left_cy}, Right eye at {right_cx, right_cy}")
-# 		# for (x, y) in shape[36:48]:
-# 		#     cv2.circle(img, (x, y), 2, (255, 0, 0), -1)
-# 	# show the image with the face detections + facial landmarks
-# 	cv2.imshow('eyes', img)
-# 	cv2.imshow("image", thresh)
-# 	#time.sleep(10)
-# 	if cv2.waitKey(1) & 0xFF == ord('q'):
-# 		break
+# gaze tracking
+while(True):
+	ret, img = cap.read()
+	gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+	rects = detector(gray, 1)
+	for rect in rects:
+
+		shape = predictor(gray, rect)
+		shape = shape_to_np(shape)
+		mask = np.zeros(img.shape[:2], dtype=np.uint8)
+		mask, _ = eye_on_mask(mask, left)
+		mask, _ = eye_on_mask(mask, right)
+		mask = cv2.dilate(mask, kernel, 5)
+		eyes = cv2.bitwise_and(img, img, mask=mask)
+		mask = (eyes == [0, 0, 0]).all(axis=2)
+		eyes[mask] = [255, 255, 255]
+		mid = (shape[42][0] + shape[39][0]) // 2
+		eyes_gray = cv2.cvtColor(eyes, cv2.COLOR_BGR2GRAY)
+		threshold = 77 #cv2.getTrackbarPos('threshold', 'image')
+		_, thresh = cv2.threshold(eyes_gray, threshold, 255, cv2.THRESH_BINARY)
+		thresh = cv2.erode(thresh, None, iterations=2) #1
+		thresh = cv2.dilate(thresh, None, iterations=4) #2
+		thresh = cv2.medianBlur(thresh, 3) #3
+		thresh = cv2.bitwise_not(thresh)
+		left_cx, left_cy = contouring(thresh[:, 0:mid], mid, img) # left eye
+		right_cx, right_cy = contouring(thresh[:, mid:], mid, img, True) # right eye
+		if left_cx != None and left_cy != None and right_cx != None and right_cy != None: 
+			input_X = np.array([left_cx, left_cy, right_cx, right_cy]).reshape(1, -1)
+			screen_x, screen_y = regressor_x.predict(input_X), regressor_y.predict(input_X)
+			print(f"Predicts that you are looking at {screen_x, screen_y}")
+		#print(f"Left eye at {left_cx, left_cy}, Right eye at {right_cx, right_cy}")
+		# for (x, y) in shape[36:48]:
+		#     cv2.circle(img, (x, y), 2, (255, 0, 0), -1)
+	# show the image with the face detections + facial landmarks
+	cv2.imshow('eyes', img)
+	#cv2.imshow("image", thresh)
+	#time.sleep(10)
+	if cv2.waitKey(1) & 0xFF == ord('q'):
+		break
 	
 cap.release()
 cv2.destroyAllWindows()
