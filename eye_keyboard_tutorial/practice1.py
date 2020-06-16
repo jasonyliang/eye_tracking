@@ -35,12 +35,12 @@ def get_blinking_ratio(face_landmarks, points):
 def get_gaze_ratio(face_landmarks, gray_image, points):
 	# Gaze detection
 	eye_region = np.array([(face_landmarks.part(points[0]).x, face_landmarks.part(points[0]).y),
-	                            (face_landmarks.part(points[1]).x, face_landmarks.part(points[1]).y),
-	                            (face_landmarks.part(points[2]).x, face_landmarks.part(points[2]).y),
-	                            (face_landmarks.part(points[3]).x, face_landmarks.part(points[3]).y),
-	                            (face_landmarks.part(points[4]).x, face_landmarks.part(points[4]).y),
-	                            (face_landmarks.part(points[5]).x, face_landmarks.part(points[5]).y)], 
-	                            dtype=np.int32)
+	                        (face_landmarks.part(points[1]).x, face_landmarks.part(points[1]).y),
+	                        (face_landmarks.part(points[2]).x, face_landmarks.part(points[2]).y),
+	                        (face_landmarks.part(points[3]).x, face_landmarks.part(points[3]).y),
+	                        (face_landmarks.part(points[4]).x, face_landmarks.part(points[4]).y),
+	                        (face_landmarks.part(points[5]).x, face_landmarks.part(points[5]).y)], 
+	                        dtype=np.int32)
 	#cv2.polylines(frame, np.int32([left_eye_region]), True, (0,0,255), 2)
 	# make mask
 	height, width, _ = frame.shape
