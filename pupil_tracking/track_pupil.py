@@ -43,7 +43,7 @@ right = [42, 43, 44, 45, 46, 47]
 cap = cv2.VideoCapture(0)
 ret, img = cap.read()
 thresh = img.copy()
-
+font = cv2.FONT_HERSHEY_PLAIN 
 
 cv2.namedWindow("calibration", cv2.WND_PROP_FULLSCREEN)
 cv2.setWindowProperty("calibration",cv2.WND_PROP_FULLSCREEN,cv2.WINDOW_FULLSCREEN)
@@ -83,7 +83,9 @@ for screen_points in s:
 		ret, img = cap.read()
 		gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 		rects = detector(gray, 1)
-		cv2.circle(img, screen_points, 4, (0, 0, 255), 2)
+		cv2.circle(img, screen_points, 16, (0, 0, 255), 2)
+		cv2.putText(img, f"Look at the Red Circles in the corner, move on to the next circle by pressing the key 'q'", 
+			(500, 100), font, 1, (255,0,0))
 		for rect in rects:
 
 			shape = predictor(gray, rect)
