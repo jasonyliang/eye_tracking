@@ -3,6 +3,8 @@ import dlib
 import numpy as np
 import time 
 from sklearn.svm import SVR
+from sklearn.linear_model import LinearRegression
+
 
 def shape_to_np(shape, dtype="int"):
 	# initialize the list of (x, y)-coordinates
@@ -50,7 +52,9 @@ def average_positions(pupil_positions):
 			RY.append(ry)
 	return np.mean(LX), np.mean(LY), np.mean(RX), np.mean(RY)
 
-
+def final_positions(pupil_positions):
+	# lx, ly, rx, ry = pupil_positions[-1]
+	return pupil_positions[-1]
 
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor('../shape_68.dat')
@@ -125,12 +129,12 @@ for screen_points in s:
 			break
 	print(f"Screen Position {screen_points}")
 
-	print(f"Pupil Position {average_positions(pupil_positions)}")
-	p.append(average_positions(pupil_positions))
+	print(f"Pupil Position {final_positions(pupil_positions)}")
+	p.append(final_positions(pupil_positions))
 cap.release()
 cv2.destroyAllWindows()
 
-# train SVM
+# # train SVM
 # direction x
 y = np.asarray(s)[:, 0]
 x = np.asarray(p)
@@ -141,6 +145,18 @@ y = np.asarray(s)[:, 1]
 x = np.asarray(p)
 regressor_y = SVR(kernel = 'rbf')
 regressor_y.fit(x, y)
+
+# linear regression doesn't work well lol
+# y = np.asarray(s)[:, 0]
+# x = np.asarray(p)
+# regressor_x = LinearRegression()
+# regressor_x.fit(x, y)
+
+# y = np.asarray(s)[:, 1]
+# x = np.asarray(p)
+# regressor_y = LinearRegression()
+# regressor_y.fit(x, y)
+
 
 cap = cv2.VideoCapture(0)
 cv2.namedWindow('image')
