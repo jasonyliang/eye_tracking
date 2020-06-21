@@ -69,7 +69,7 @@ font = cv2.FONT_HERSHEY_PLAIN
 cv2.namedWindow("calibration", cv2.WND_PROP_FULLSCREEN)
 cv2.setWindowProperty("calibration",cv2.WND_PROP_FULLSCREEN,cv2.WINDOW_FULLSCREEN)
 
-cv2.namedWindow('image')
+
 kernel = np.ones((9, 9), np.uint8)
 
 def nothing(x):
@@ -127,6 +127,9 @@ for screen_points in s:
 
 	print(f"Pupil Position {average_positions(pupil_positions)}")
 	p.append(average_positions(pupil_positions))
+cap.release()
+cv2.destroyAllWindows()
+
 # train SVM
 # direction x
 y = np.asarray(s)[:, 0]
@@ -139,7 +142,8 @@ x = np.asarray(p)
 regressor_y = SVR(kernel = 'rbf')
 regressor_y.fit(x, y)
 
-
+cap = cv2.VideoCapture(0)
+cv2.namedWindow('image')
 # gaze tracking
 while(True):
 	ret, img = cap.read()
@@ -169,6 +173,7 @@ while(True):
 		if left_cx != None and left_cy != None and right_cx != None and right_cy != None: 
 			input_X = np.array([left_cx, left_cy, right_cx, right_cy]).reshape(1, -1)
 			screen_x, screen_y = regressor_x.predict(input_X), regressor_y.predict(input_X)
+			cv2.circle(img, (screen_x, screen_y), 4, (130, 210, 130), 2)
 			print(f"Predicts that you are looking at {screen_x, screen_y}")
 		#print(f"Left eye at {left_cx, left_cy}, Right eye at {right_cx, right_cy}")
 		# for (x, y) in shape[36:48]:
