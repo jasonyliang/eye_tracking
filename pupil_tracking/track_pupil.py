@@ -56,7 +56,7 @@ def final_positions(pupil_positions):
 	# lx, ly, rx, ry = pupil_positions[-1]
 	return pupil_positions[-1]
 
-def anchor_point(shape):
+def get_anchor_point(shape):
 	# grab all points
 	sum_x = 0
 	sum_y = 0
@@ -65,7 +65,8 @@ def anchor_point(shape):
 		sum_y += pnt[1]
 	return sum_x/len(shape), sum_y/len(shape) 
 
-
+def get_eye_vector(anchor, left_pts, right_pts):
+	return left_pts - anchor, right_pts - anchor
 
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor('../shape_68.dat')
@@ -111,6 +112,7 @@ for screen_points in s:
 
 			shape = predictor(gray, rect)
 			shape = shape_to_np(shape)
+			anchor_point = get_anchor_point(shape)
 			mask = np.zeros(img.shape[:2], dtype=np.uint8)
 			mask, left_points = eye_on_mask(mask, left, shape)
 			mask, right_points = eye_on_mask(mask, right, shape)
@@ -128,6 +130,7 @@ for screen_points in s:
 			thresh = cv2.bitwise_not(thresh)
 			left_cx, left_cy = contouring(thresh[:, 0:mid], mid, img) # left eye
 			right_cx, right_cy = contouring(thresh[:, mid:], mid, img, True) # right eye
+			left_eye_v, right_eye_v = get_eye_vector(anchor_point, left_points, right_points)
 			# print(f"Left eye at {left_points}, Right eye at {right_points}")
 			# print(f"Left pupil at {left_cx, left_cy}, Right pupil at {right_cx, right_cy}")
 			# for (x, y) in shape[36:48]:
