@@ -16,7 +16,7 @@ def shape_to_np(shape, dtype="int"):
 	# return the list of (x, y)-coordinates
 	return coords
 
-def eye_on_mask(mask, side):
+def eye_on_mask(mask, side, shape):
 	points = [shape[i] for i in side]
 	points = np.array(points, dtype=np.int32)
 	mask = cv2.fillConvexPoly(mask, points, 255)
@@ -55,6 +55,17 @@ def average_positions(pupil_positions):
 def final_positions(pupil_positions):
 	# lx, ly, rx, ry = pupil_positions[-1]
 	return pupil_positions[-1]
+
+def anchor_point(shape):
+	# grab all points
+	sum_x = 0
+	sum_y = 0
+	for pnt in shape:
+		sum_x += pnt[0]
+		sum_y += pnt[1]
+	return sum_x/len(shape), sum_y/len(shape) 
+
+
 
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor('../shape_68.dat')
@@ -101,8 +112,8 @@ for screen_points in s:
 			shape = predictor(gray, rect)
 			shape = shape_to_np(shape)
 			mask = np.zeros(img.shape[:2], dtype=np.uint8)
-			mask, left_points = eye_on_mask(mask, left)
-			mask, right_points = eye_on_mask(mask, right)
+			mask, left_points = eye_on_mask(mask, left, shape)
+			mask, right_points = eye_on_mask(mask, right, shape)
 			mask = cv2.dilate(mask, kernel, 5)
 			eyes = cv2.bitwise_and(img, img, mask=mask)
 			mask = (eyes == [0, 0, 0]).all(axis=2)
@@ -159,7 +170,8 @@ regressor_y.fit(x, y)
 
 
 cap = cv2.VideoCapture(0)
-cv2.namedWindow('image')
+cv2.namedWindow('image', cv2.WND_PROP_FULLSCREEN)
+cv2.setWindowProperty("image",cv2.WND_PROP_FULLSCREEN,cv2.WINDOW_FULLSCREEN)
 # gaze tracking
 while(True):
 	ret, img = cap.read()
@@ -170,8 +182,8 @@ while(True):
 		shape = predictor(gray, rect)
 		shape = shape_to_np(shape)
 		mask = np.zeros(img.shape[:2], dtype=np.uint8)
-		mask, _ = eye_on_mask(mask, left)
-		mask, _ = eye_on_mask(mask, right)
+		mask, _ = eye_on_mask(mask, left, shape)
+		mask, _ = eye_on_mask(mask, right, shape)
 		mask = cv2.dilate(mask, kernel, 5)
 		eyes = cv2.bitwise_and(img, img, mask=mask)
 		mask = (eyes == [0, 0, 0]).all(axis=2)
