@@ -100,7 +100,7 @@ def nothing(x):
 p = []
 s = [(10, 10), (1250, 10), (10, 700), (1250, 700)]
 for screen_points in s:
-	pupil_positions = []
+	feature_positions = []
 	while True:
 		ret, img = cap.read()
 		gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -138,13 +138,15 @@ for screen_points in s:
 		# show the image with the face detections + facial landmarks
 		#cv2.imshow('eyes', img)
 		cv2.imshow('calibration', img)
-		pupil_positions.append((left_cx, left_cy, right_cx, right_cy))
+		pupil_locations = np.array([left_cx, left_cy, right_cx, right_cy])
+		eye_vectors_flattened = np.append(left_eye_v, right_eye_v).flatten()
+		feature_positions.append(np.append(pupil_locations, eye_vectors_flattened))
 		if cv2.waitKey(1) & 0xFF == ord('q'):
 			break
 	print(f"Screen Position {screen_points}")
 
-	print(f"Pupil Position {final_positions(pupil_positions)}")
-	p.append(final_positions(pupil_positions))
+	print(f"Pupil Position {final_positions(feature_positions)}")
+	p.append(final_positions(feature_positions))
 cap.release()
 cv2.destroyAllWindows()
 
@@ -184,9 +186,10 @@ while(True):
 
 		shape = predictor(gray, rect)
 		shape = shape_to_np(shape)
+		anchor_point = get_anchor_point(shape)
 		mask = np.zeros(img.shape[:2], dtype=np.uint8)
-		mask, _ = eye_on_mask(mask, left, shape)
-		mask, _ = eye_on_mask(mask, right, shape)
+		mask, left_points = eye_on_mask(mask, left, shape)
+		mask, right_points = eye_on_mask(mask, right, shape)
 		mask = cv2.dilate(mask, kernel, 5)
 		eyes = cv2.bitwise_and(img, img, mask=mask)
 		mask = (eyes == [0, 0, 0]).all(axis=2)
@@ -201,8 +204,11 @@ while(True):
 		thresh = cv2.bitwise_not(thresh)
 		left_cx, left_cy = contouring(thresh[:, 0:mid], mid, img) # left eye
 		right_cx, right_cy = contouring(thresh[:, mid:], mid, img, True) # right eye
+		left_eye_v, right_eye_v = get_eye_vector(anchor_point, left_points, right_points)
 		if left_cx != None and left_cy != None and right_cx != None and right_cy != None: 
-			input_X = np.array([left_cx, left_cy, right_cx, right_cy]).reshape(1, -1)
+			pupil_locations = np.array([left_cx, left_cy, right_cx, right_cy])
+			eye_vectors_flattened = np.append(left_eye_v, right_eye_v).flatten()
+			input_X = np.append(pupil_locations, eye_vectors_flattened).reshape(1, -1)
 			screen_x, screen_y = regressor_x.predict(input_X), regressor_y.predict(input_X)
 			cv2.circle(img, (screen_x, screen_y), 4, (130, 210, 130), 2)
 			print(f"Predicts that you are looking at {screen_x, screen_y}")
@@ -210,7 +216,7 @@ while(True):
 		# for (x, y) in shape[36:48]:
 		#     cv2.circle(img, (x, y), 2, (255, 0, 0), -1)
 	# show the image with the face detections + facial landmarks
-	cv2.imshow('eyes', img)
+	cv2.imshow('image', img)
 	#cv2.imshow("image", thresh)
 	#time.sleep(10)
 	if cv2.waitKey(1) & 0xFF == ord('q'):
