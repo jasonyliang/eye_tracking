@@ -99,6 +99,12 @@ def nothing(x):
 # using SVR: we train two seaprate SVRs
 p = []
 s = [(10, 10), (1250, 10), (10, 700), (1250, 700)]
+# more points
+for _ in range(20):
+	x = int(np.random.randint(1250, size=1))
+	y = int(np.random.randint(700, size=1))
+	s.append((x, y))
+
 for screen_points in s:
 	feature_positions = []
 	while True:
@@ -138,7 +144,10 @@ for screen_points in s:
 		# show the image with the face detections + facial landmarks
 		#cv2.imshow('eyes', img)
 		cv2.imshow('calibration', img)
-		pupil_locations = np.array([left_cx, left_cy, right_cx, right_cy])
+		pupil_locations = np.array([[left_cx, left_cy], [right_cx, right_cy]])
+		# anchor used on pupil locations
+		pupil_locations = np.asarray(pupil_locations - anchor_point).flatten()
+
 		eye_vectors_flattened = np.append(left_eye_v, right_eye_v).flatten()
 		feature_positions.append(np.append(pupil_locations, eye_vectors_flattened))
 		if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -152,26 +161,26 @@ cv2.destroyAllWindows()
 
 # # train SVM
 # direction x
-y = np.asarray(s)[:, 0]
-x = np.asarray(p)
-regressor_x = SVR(kernel = 'rbf')
-regressor_x.fit(x, y)
-# direction y
-y = np.asarray(s)[:, 1]
-x = np.asarray(p)
-regressor_y = SVR(kernel = 'rbf')
-regressor_y.fit(x, y)
-
-# linear regression doesn't work well lol
 # y = np.asarray(s)[:, 0]
 # x = np.asarray(p)
-# regressor_x = LinearRegression()
+# regressor_x = SVR(kernel = 'rbf')
 # regressor_x.fit(x, y)
-
+# # direction y
 # y = np.asarray(s)[:, 1]
 # x = np.asarray(p)
-# regressor_y = LinearRegression()
+# regressor_y = SVR(kernel = 'rbf')
 # regressor_y.fit(x, y)
+
+# linear regression doesn't work well lol
+y = np.asarray(s)[:, 0]
+x = np.asarray(p)
+regressor_x = LinearRegression()
+regressor_x.fit(x, y)
+
+y = np.asarray(s)[:, 1]
+x = np.asarray(p)
+regressor_y = LinearRegression()
+regressor_y.fit(x, y)
 
 
 cap = cv2.VideoCapture(0)
@@ -206,11 +215,14 @@ while(True):
 		right_cx, right_cy = contouring(thresh[:, mid:], mid, img, True) # right eye
 		left_eye_v, right_eye_v = get_eye_vector(anchor_point, left_points, right_points)
 		if left_cx != None and left_cy != None and right_cx != None and right_cy != None: 
-			pupil_locations = np.array([left_cx, left_cy, right_cx, right_cy])
+			pupil_locations = np.array([[left_cx, left_cy], [right_cx, right_cy]])
+			# anchor used on pupil locations
+			pupil_locations = np.asarray(pupil_locations - anchor_point).flatten()
 			eye_vectors_flattened = np.append(left_eye_v, right_eye_v).flatten()
 			input_X = np.append(pupil_locations, eye_vectors_flattened).reshape(1, -1)
 			screen_x, screen_y = regressor_x.predict(input_X), regressor_y.predict(input_X)
 			cv2.circle(img, (screen_x, screen_y), 4, (130, 210, 130), 2)
+			print(f"Pupil Position {input_X}")
 			print(f"Predicts that you are looking at {screen_x, screen_y}")
 		#print(f"Left eye at {left_cx, left_cy}, Right eye at {right_cx, right_cy}")
 		# for (x, y) in shape[36:48]:
