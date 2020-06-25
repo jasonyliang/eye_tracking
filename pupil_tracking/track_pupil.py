@@ -146,10 +146,12 @@ for screen_points in s:
 		cv2.imshow('calibration', img)
 		pupil_locations = np.array([[left_cx, left_cy], [right_cx, right_cy]])
 		# anchor used on pupil locations
-		pupil_locations = np.asarray(pupil_locations - anchor_point).flatten()
+		if not None in pupil_locations:
+			print("Here")
+			pupil_locations = np.asarray(pupil_locations - anchor_point).flatten()
 
-		eye_vectors_flattened = np.append(left_eye_v, right_eye_v).flatten()
-		feature_positions.append(np.append(pupil_locations, eye_vectors_flattened))
+			eye_vectors_flattened = np.append(left_eye_v, right_eye_v).flatten()
+			feature_positions.append(np.append(pupil_locations, eye_vectors_flattened))
 		if cv2.waitKey(1) & 0xFF == ord('q'):
 			break
 	print(f"Screen Position {screen_points}")
@@ -171,16 +173,36 @@ cv2.destroyAllWindows()
 # regressor_y = SVR(kernel = 'rbf')
 # regressor_y.fit(x, y)
 
-# linear regression doesn't work well lol
+# linear regression
+# y = np.asarray(s)[:, 0]
+# x = np.asarray(p)
+# regressor_x = LinearRegression()
+# regressor_x.fit(x, y)
+
+# y = np.asarray(s)[:, 1]
+# x = np.asarray(p)
+# regressor_y = LinearRegression()
+# regressor_y.fit(x, y)
+
+# Polynomial
+# 2nd degree
+from sklearn.preprocessing import PolynomialFeatures
+
 y = np.asarray(s)[:, 0]
 x = np.asarray(p)
+poly_reg_x = PolynomialFeatures(degree = 2)
+X_poly_x = poly_reg_x.fit_transform(x)
+poly_reg_x.fit(X_poly_x, y)
 regressor_x = LinearRegression()
-regressor_x.fit(x, y)
+regressor_x.fit(X_poly_x, y)
 
 y = np.asarray(s)[:, 1]
 x = np.asarray(p)
+poly_reg_y = PolynomialFeatures(degree = 2)
+X_poly_y = poly_reg_y.fit_transform(x)
+poly_reg_y.fit(X_poly_y, y)
 regressor_y = LinearRegression()
-regressor_y.fit(x, y)
+regressor_y.fit(X_poly_y, y)
 
 
 cap = cv2.VideoCapture(0)
@@ -220,7 +242,9 @@ while(True):
 			pupil_locations = np.asarray(pupil_locations - anchor_point).flatten()
 			eye_vectors_flattened = np.append(left_eye_v, right_eye_v).flatten()
 			input_X = np.append(pupil_locations, eye_vectors_flattened).reshape(1, -1)
-			screen_x, screen_y = regressor_x.predict(input_X), regressor_y.predict(input_X)
+			input_poly_x = poly_reg_x.fit_transform(input_X)
+			input_poly_y = poly_reg_y.fit_transform(input_X)
+			screen_x, screen_y = regressor_x.predict(input_poly_x), regressor_y.predict(input_poly_y)
 			cv2.circle(img, (screen_x, screen_y), 4, (130, 210, 130), 2)
 			print(f"Pupil Position {input_X}")
 			print(f"Predicts that you are looking at {screen_x, screen_y}")
