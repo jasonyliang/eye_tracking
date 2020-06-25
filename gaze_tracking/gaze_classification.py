@@ -2,8 +2,9 @@ import cv2
 import dlib
 import numpy as np
 import time 
-from sklearn.svm import SVR
+from sklearn.svm import SVC
 from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import StandardScaler
 
 
 def shape_to_np(shape, dtype="int"):
@@ -96,15 +97,21 @@ def nothing(x):
 # set calibration
 # need calibration function F to map positions of pupils p to positions on the screen s
 # s_x, s_y = F(p_x, p_y)
-# using SVR: we train two seaprate SVRs
+
+# classify: gazing on the left vs not gazing on the left
 p = []
-s = [(10, 10), (1250, 10), (10, 700), (1250, 700)]
+s = []
+gazed_left = []
 # more points
 for _ in range(20):
 	x = int(np.random.randint(1250, size=1))
 	y = int(np.random.randint(700, size=1))
 	s.append((x, y))
-
+	if x < 625:
+		gazed_left.append(1)
+	else:
+		gazed_left.append(0)
+print(gazed_left)
 for screen_points in s:
 	feature_positions = []
 	while True:
@@ -147,26 +154,26 @@ for screen_points in s:
 		pupil_locations = np.array([[left_cx, left_cy], [right_cx, right_cy]])
 		# anchor used on pupil locations
 		if not None in pupil_locations:
-			print("Here")
 			pupil_locations = np.asarray(pupil_locations - anchor_point).flatten()
 
 			eye_vectors_flattened = np.append(left_eye_v, right_eye_v).flatten()
 			feature_positions.append(np.append(pupil_locations, eye_vectors_flattened))
 		if cv2.waitKey(1) & 0xFF == ord('q'):
 			break
-	print(f"Screen Position {screen_points}")
-
-	print(f"Pupil Position {final_positions(feature_positions)}")
 	p.append(final_positions(feature_positions))
 cap.release()
 cv2.destroyAllWindows()
 
 # # train SVM
 # direction x
-# y = np.asarray(s)[:, 0]
-# x = np.asarray(p)
-# regressor_x = SVR(kernel = 'rbf')
-# regressor_x.fit(x, y)
+y = np.asarray(gazed_left).reshape(-1,1)
+x = np.asarray(p)
+
+sc = StandardScaler()
+x = sc.fit_transform(x)
+
+classifier = SVC(kernel = 'rbf', random_state = 0)
+classifier.fit(x, y)
 # # direction y
 # y = np.asarray(s)[:, 1]
 # x = np.asarray(p)
@@ -186,23 +193,23 @@ cv2.destroyAllWindows()
 
 # Polynomial
 # 2nd degree
-from sklearn.preprocessing import PolynomialFeatures
+# from sklearn.preprocessing import PolynomialFeatures
 
-y = np.asarray(s)[:, 0]
-x = np.asarray(p)
-poly_reg_x = PolynomialFeatures(degree = 2)
-X_poly_x = poly_reg_x.fit_transform(x)
-poly_reg_x.fit(X_poly_x, y)
-regressor_x = LinearRegression()
-regressor_x.fit(X_poly_x, y)
+# y = np.asarray(s)[:, 0]
+# x = np.asarray(p)
+# poly_reg_x = PolynomialFeatures(degree = 2)
+# X_poly_x = poly_reg_x.fit_transform(x)
+# poly_reg_x.fit(X_poly_x, y)
+# regressor_x = LinearRegression()
+# regressor_x.fit(X_poly_x, y)
 
-y = np.asarray(s)[:, 1]
-x = np.asarray(p)
-poly_reg_y = PolynomialFeatures(degree = 2)
-X_poly_y = poly_reg_y.fit_transform(x)
-poly_reg_y.fit(X_poly_y, y)
-regressor_y = LinearRegression()
-regressor_y.fit(X_poly_y, y)
+# y = np.asarray(s)[:, 1]
+# x = np.asarray(p)
+# poly_reg_y = PolynomialFeatures(degree = 2)
+# X_poly_y = poly_reg_y.fit_transform(x)
+# poly_reg_y.fit(X_poly_y, y)
+# regressor_y = LinearRegression()
+# regressor_y.fit(X_poly_y, y)
 
 
 cap = cv2.VideoCapture(0)
@@ -242,12 +249,13 @@ while(True):
 			pupil_locations = np.asarray(pupil_locations - anchor_point).flatten()
 			eye_vectors_flattened = np.append(left_eye_v, right_eye_v).flatten()
 			input_X = np.append(pupil_locations, eye_vectors_flattened).reshape(1, -1)
-			input_poly_x = poly_reg_x.fit_transform(input_X)
-			input_poly_y = poly_reg_y.fit_transform(input_X)
-			screen_x, screen_y = regressor_x.predict(input_poly_x), regressor_y.predict(input_poly_y)
-			cv2.circle(img, (screen_x, screen_y), 4, (130, 210, 130), 2)
-			print(f"Pupil Position {input_X}")
-			print(f"Predicts that you are looking at {screen_x, screen_y}")
+			input_X = sc.transform(input_X)
+			# predict whether the person is gazing left
+			pred = classifier.predict(input_X)
+			if pred == 1:
+				print(f"Predicts that you are looking at left")
+			else:
+				print(f"Predicts that you are looking right")
 		#print(f"Left eye at {left_cx, left_cy}, Right eye at {right_cx, right_cy}")
 		# for (x, y) in shape[36:48]:
 		#     cv2.circle(img, (x, y), 2, (255, 0, 0), -1)
